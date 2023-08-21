@@ -1,5 +1,5 @@
-title = Factores de localización 
+title: Factores de localización 
 # logo: /assets/img/headshot_circle.png
-description: Leap Day is a theme for Github Pages.
+description: Minimal
 # show_downloads: true
-theme: jekyll-theme-leap-day
+theme: jekyll-theme-minimal
