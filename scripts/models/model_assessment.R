@@ -48,8 +48,6 @@ calculate_figure_of_merits_image_2 <- function(imagen_1, imagen_2) {
                                         terra::ifel(imagen_1 == 0 & imagen_2 == 0, 0, NA))))
 }
 
-
-
 calculate_fom <- function(ref_img, sim_img){
   
   # stack images in a vector    
@@ -87,9 +85,6 @@ overall_figure_merits <- function(numero, modelo,mask){
     
 } 
 
-
-
-
 overall_figure_merits <- function(numero, modelo,mask){
   simulacion <- evaluar_simulacion(numero, modelo, mask= mask)
   ras_plantaciones_2015_sim_patches = raster(plantaciones_1987 + simulacion)
@@ -115,8 +110,6 @@ assign_na_value_from_raster_image <- function(raster_image,value_if_isna, value_
     
 }
 
-
-
 prepare_simulation_raster <- function(sim_img, lingue_mask_positive, plantation_1987){
     
     # Replace zeros with NA if needed
@@ -137,13 +130,24 @@ prepare_simulation_raster <- function(sim_img, lingue_mask_positive, plantation_
 # TODO: AUC ESPACIAL TENGO USAR TODOS LOS DATOS DEL RASTER. PASARLOS A VALOR Y HACER ROC
 # TODO: AUC NO ESPACIAL ES DE CALIBRACION CON LOS PUNTOS DE VALIDACIÓN Y TEST.
 
-auc <- function(testing_set, modelo){
-  labels <- testing_set$gan_plant
+calculate_auc <- function(testing_set, modelo){
+  labels <- testing_set$response_var
   predictions <- predict(modelo, type = "response", newdata = testing_set)
   roc_curve <- pROC::roc(labels, predictions)
   return(roc_curve$auc[1])
 }
 
+compute_auc <- function(testing_set, modelo, response_var = "gan_plant"){
+    labels <- testing_set[[response_var]]
+    if (length(unique(labels)) < 2){
+        warning("Labels contain only one class. AUC connot be computed.")
+    }
+    
+    predictions <- predict(modelo, type = "response", newdata = testing_set)
+    roc_curve <- pROC::roc(labels, predictions)
+    return(as.numeric(roc_curve$auc))
+    
+}
 
 simulation_assessment <- function(num_pixels,model,mask){
     prob = terra::predict(variables_escaladas, model, type = "response")
@@ -161,7 +165,6 @@ simulations_gains <- function(model,spatial_predict_variables,pixel_number, orig
     return(gan_sim)
     
 }
-
 
 calculate_gains_area = function(raster_layer){
     gains_patches_8715 = rast(raster)
