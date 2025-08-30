@@ -1,0 +1,101 @@
+---
+title: "WGLR_variables"
+author: "Cristian Vergara"
+format: html
+editor: visual
+---
+
+## Análisis de la estacionalidad de las variables.
+
+```{r}
+
+library(dplyr)
+```
+
+```{r}
+# Paso uno sera importar el modelo
+
+ setwd("F:/modelo/datos/modelo_8715/resultados/modelos")
+ 
+ res.binomial <- readRDS("gwlr_1.rds")
+
+
+
+```
+
+Calcular el rango intercuartilico.
+
+```{r}
+
+coef <- dplyr::select(res.binomial$SDF@data, c("dem_lingue","aptitud_forVII_lingue", "bn_lingue_87", "mat_lingue_87", "cul_prad_lingue_87", "dis_comunidades_lingue", "dis_urbano_lingue", "dis_caminos_lingue", "dis_hid_lingue", "contag_600", "division_600", "econ_mn_600", "pend_lingue", "dis_plant87_lingue",  "predios_lingue1"))
+
+IQR_coef <- data.frame(IQR = sapply(coef, IQR))
+
+IQR_coef
+
+
+```
+
+Necesitamos ajustar el modelo global para obtnener los coeficientes.
+
+```{r}
+
+setwd("F:/modelo/datos/modelo_8715/datos_modelo/modelo_final")
+
+pl_data <- read.csv("datos_modelo_completo_2024.csv")
+
+pl_data <- na.omit(pl_data)
+
+pl_data_2 <- distinct(pl_data, x, y, .keep_all = TRUE)
+
+d_train <- pl_data_2
+
+coords_train <- cbind(d_train$x, d_train$y)
+spdf_train <- SpatialPointsDataFrame(coords_train, d_train)  
+
+
+```
+
+```{r}
+
+# pen_cat
+
+modelo_final <- glm(gan_plant ~  dem_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + division_600 + econ_mn_600 + pend_lingue + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+sum_model <- summary(modelo_final)
+
+```
+
+```{r}
+anova(modelo_final, test ="LRT")
+```
+
+```{r}
+
+
+st_errors <- data.frame(variables  = rownames(sum_model$coefficients), Std.Error = sum_model$coefficients)
+
+st_errors <- st_errors[2:16,]
+St_Error <- dplyr::select(st_errors, Std.Error.Estimate)
+
+stationary <- cbind(IQR_coef, St_Error)
+
+```
+
+```{r}
+
+stationary <- dplyr::mutate(stationary, EV = IQR/Std.Error.Estimate, Stationary = ifelse(EV > 2,"No Stationary","Stationary"))
+
+head(stationary, n = 20L)
+```
+
+Vamos a exportar el dataframe con la informacion
+
+```{r}
+
+setwd("F:/modelo/datos/modelo_8715/resultados/modelos")
+
+write.csv(stationary, file = "gwlr_1_stationary.csv")
+
+
+```

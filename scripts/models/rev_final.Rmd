@@ -1,0 +1,653 @@
+---
+title: "Metodos y resultados preliminares GWLR lingue"
+author: "Cristian Vergara"
+date: "05/31/2022"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
+
+```
+
+
+## Librerias utilizadas para este trabajo
+
+```{r, include= TRUE, warning = FALSE, message = FALSE, echo = TRUE}
+library(GWmodel)
+library(sp)
+library(dplyr)
+library(scales)
+library(pROC)
+library(ape)
+library(gridExtra)
+library(sf)
+library(terra)
+library(tmap)
+library(tmaptools)
+library(ggplot2)
+library(RColorBrewer)
+library(MASS)
+library(car)
+library(gstat)
+library(sp)
+library(spatstat)
+library(knitr)
+library(kableExtra)
+library(DT)
+library(glmulti)
+library(raster)
+
+```
+
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+
+#dir <-"C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/datos_6"
+
+setwd("C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/datos_modelo/test2")
+
+#setwd("C:/Users/Cristian uah/Universidad de Alcala/Publicaciones - Spatial logistic model forest plantation chile/datos/modelo_8701/datos_modelo")
+
+
+lingue_puntos_gpkg <- st_read(dsn = "li_datos8701_completo.gpkg", layer = "li_pts_18s")
+
+lingue <- st_read(dsn = "lingue.shp")
+
+```
+
+
+```{r}
+group_by(lingue_puntos_gpkg, gali_8701_) %>% dplyr::summarise(n())
+```
+
+
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+dir <- ("C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/datos_modelo/test2")
+
+setwd(dir)
+
+pl_data <- read.csv("datos_modelo_completo.csv")
+  
+pl_data <- na.omit(pl_data)
+
+
+```
+
+## La cuenca del Lingue y los datos espaciales
+
+
+```{r}
+
+dir <-"C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/datos_modelo/test2"
+setwd(dir)
+lingue <- st_read(dsn = "lingue.shp")
+```
+## Mapa de puntos regresion ##
+
+```{r, include = T, warning = FALSE, message = FALSE, echo = FALSE}
+tmap_mode("view")
+  tm_shape(lingue)+
+    tm_polygons(col = "white")+
+  tm_shape(lingue_puntos_gpkg) +
+  tm_dots(size = 0.1, col = "gali_8701_", breaks = c(0,1,2), palette = "Blues")+
+    tm_layout(title = "Puntos de muestreo lingue", bg.color = "gray", legend.position = c("right", "bottom"), frame.lwd = 3)
+
+```
+
+## Datos de entrada
+
+```{r, warning = FALSE, message = FALSE, options("kableExtra.html.bsTable" = T)}
+DT::datatable(pl_data)
+```
+
+## PREPARACION DE LA BASE DE DATOS
+  - Eliminar puntos repetidos
+  
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+pl_data_2 <- distinct(pl_data, x_1, y_1, .keep_all = TRUE)
+```
+  
+  - Estandarizar variables continuas asignando valores entre 0 y 1
+  
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+for (i in 6:23){
+  pl_data_2[,i] <- scales::rescale(pl_data_2[,i], c(0,1)) 
+  
+}
+```
+
+No realizaremos una particion de datos. Usaremos todos los datos y generaremos una nueva muestra para validar
+ 
+```{r}
+d_train <- pl_data_2
+```
+ 
+ 
+## Calibración del modelo 
+  - El cálculo de la matriz de distancia
+  
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+coords_train <- cbind(d_train$x_1, d_train$y_1)
+#coords_test <- cbind(d_test$x_1, d_test$y_1)
+spdf_train <- SpatialPointsDataFrame(coords_train, d_train)  
+#spdf_test <- SpatialPointsDataFrame(coords_test, d_test) 
+DM_train <- gw.dist(dp.locat = coords_train) 
+#DM_test <- gw.dist(dp.locat = coords_train, rp.locat = coords_test) 
+
+```
+
+Ahora vamos a generar el modelo global 
+
+```{r}
+#library(glmulti)
+
+options(scipen=999)
+
+# pen_cat
+modelo_6 <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + division_600 + shdi_600 + econ_mn_600 + enn_mn_600 + pland_1  + pen_lingue15 + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+# pen_continua
+modelo_7 <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue +  dis_hid_lingue  + contag_600 + shdi_600 + division_600 + econ_mn_600 + enn_mn_600 + pland_1 + pend_lingue + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+```
+
+
+```{r}
+
+summary(modelo_6)
+summary(modelo_7)
+
+
+```
+
+
+```{r}
+
+anova(modelo_6, test ="LRT")
+anova(modelo_7, test ="LRT")
+```
+
+```{r}
+vif(modelo_6)
+
+```
+
+```{r}
+
+vif(modelo_7)
+```
+
+# Quitamos la variable division que esta produciendo un aumento del VIF
+
+```{r}
+
+options(scipen=999)
+
+# pen_cat
+modelo_8 <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + shdi_600 + econ_mn_600 + enn_mn_600 + pland_1  + pen_lingue15 + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+# pen_continua
+modelo_9 <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue +  dis_hid_lingue  + contag_600 + shdi_600 + econ_mn_600 + enn_mn_600 + pland_1 + pend_lingue + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+```
+
+```{r}
+
+summary(modelo_8)
+summary(modelo_9)
+
+```
+
+
+```{r}
+anova(modelo_8, test ="LRT")
+anova(modelo_9, test ="LRT")
+```
+```{r}
+vif(modelo_8)
+```
+```{r}
+vif(modelo_9)
+```
+# pen_cat
+modelo_8 <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + shdi_600 + econ_mn_600 + enn_mn_600 + pland_1  + pen_lingue15 + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+# pen_continua
+modelo_9 <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue +  dis_hid_lingue  + contag_600 + shdi_600 + econ_mn_600 + enn_mn_600 + pland_1 + pend_lingue + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+
+
+```{r}
+
+
+test_lingue_8701 <- glmulti(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + shdi_600 + econ_mn_600 + enn_mn_600 + pland_1  + pen_lingue15 + dis_plant87_lingue + predios_lingue1, level = 1, data = spdf_train, family = binomial, method = "h", confsetsize = 300, crit = aic, plotty = TRUE, report = TRUE)
+
+```
+
+Modelos Y AIC WEIGHTS
+
+```{r}
+
+wgt <- weightable(test_lingue_8701)
+
+```
+
+
+```{r}
+wgt1 <- wgt[wgt$aic <= min(wgt$aic) +2,]
+
+wgt1
+
+```
+
+```{r}
+summary(test_lingue_8701@objects[[1]])
+summary(test_lingue_8701@objects[[2]])
+summary(test_lingue_8701@objects[[3]])
+summary(test_lingue_8701@objects[[4]])
+summary(test_lingue_8701@objects[[5]])
+summary(test_lingue_8701@objects[[6]])
+summary(test_lingue_8701@objects[[7]])
+summary(test_lingue_8701@objects[[8]])
+summary(test_lingue_8701@objects[[9]])
+summary(test_lingue_8701@objects[[10]])
+summary(test_lingue_8701@objects[[11]])
+summary(test_lingue_8701@objects[[12]])
+summary(test_lingue_8701@objects[[13]])
+summary(test_lingue_8701@objects[[14]])
+
+```
+
+
+```{r}
+
+anova(test_lingue_8701@objects[[1]], test ="LRT")
+anova(test_lingue_8701@objects[[2]], test ="LRT")
+anova(test_lingue_8701@objects[[3]], test ="LRT")
+anova(test_lingue_8701@objects[[4]], test ="LRT")
+anova(test_lingue_8701@objects[[5]], test ="LRT")
+anova(test_lingue_8701@objects[[6]], test ="LRT")
+anova(test_lingue_8701@objects[[7]], test ="LRT")
+anova(test_lingue_8701@objects[[8]], test ="LRT")
+anova(test_lingue_8701@objects[[9]], test ="LRT")
+anova(test_lingue_8701@objects[[10]], test ="LRT")
+anova(test_lingue_8701@objects[[11]], test ="LRT")
+anova(test_lingue_8701@objects[[12]], test ="LRT")
+anova(test_lingue_8701@objects[[13]], test ="LRT")
+anova(test_lingue_8701@objects[[14]], test ="LRT")
+
+
+
+```
+
+```{r}
+avg_lingue8701 <- coef.glmulti(test_lingue_8701, select="all", varweighting ="Buckland", icmethod ="Lukacs")
+```
+
+```{r}
+avg_lingue8701_1 <- coef.glmulti(test_lingue_8701, select= 100, varweighting ="Buckland", icmethod ="Lukacs")
+```
+  
+```{r}
+avg_lingue8701_100 <- coef.glmulti(test_lingue_8701, select= as.integer(14), varweighting ="Buckland", icmethod ="Lukacs")
+```
+
+  - Cálculo del ancho de banda óptimo: 
+  
+  - Se define un kernel de busqueda, en este caso un kernel adaptativo bisquare.  *The adaptive kernel changes such a local extent by controlling the k-th nearest neighbour distance for each regression location*
+      
+    - Bi-square kernel has a clear-cut range where kernel weighting is non-zero. It is suitable for when you want to clarify local extents for model fitting. In the case of adaptive kernel, the number of areas included in the kernel is kept constant so that using bi-square kernel is secure.
+      
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+bw <- bw.ggwr(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + shdi_600 + econ_mn_600 + pen_lingue15 + dis_plant87_lingue + predios_lingue1, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+```
+
+```{r, warning = FALSE, message = FALSE, echo=FALSE, include=FALSE}
+res.binomial <- ggwr.basic(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + shdi_600 + econ_mn_600 + pen_lingue15 + dis_plant87_lingue + predios_lingue1, data = spdf_train, bw = bw, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+
+```
+## Resultados de modelo
+
+```{r, include = T, warning = FALSE, message = FALSE, echo = FALSE}
+
+options(scipen = 9999)
+
+res.binomial
+
+```
+
+En principio nos interesa ahora realizar la interpolacion de las variables con mayor importancia relativaS
+Comparar el modelo final normal con el modelo final global del ranto interquartilico
+
+```{r}
+
+coef <- dplyr::select(res.binomial$SDF@data, c("aptitud_agricola_lingue", "aptitud_forVII_lingue", "bn_lingue_87", "mat_lingue_87", "cul_prad_lingue_87", "dis_comunidades_lingue", "dis_urbano_lingue", "dis_caminos_lingue", "dis_hid_lingue", "contag_600", "shdi_600", "econ_mn_600", "pen_lingue15", "dis_plant87_lingue",  "predios_lingue1"))
+
+IQR_coef <- data.frame(IQR = sapply(coef, IQR))
+
+IQR_coef
+
+```
+````{r}
+
+# pen_cat
+modelo_final <- glm(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + shdi_600 + econ_mn_600 + pen_lingue15 + dis_plant87_lingue + predios_lingue1, spdf_train, family = binomial(), na.action = "na.omit")
+
+sum_model <- summary(modelo_final)
+
+```
+
+```{r}
+sum_model$coefficients[,2]
+st_errors <- data.frame(variables  = rownames(sum_model$coefficients), Std.Error = sum_model$coefficients[,2])
+st_errors <- st_errors[2:16,]
+stationary <- cbind(IQR_coef, st_errors)
+
+
+```
+
+```{r}
+
+stationary <- mutate(stationary, EV = IQR/Std.Error, Stationary = ifelse(EV > 2,"No Stationary","Stationary"))
+
+
+stationary
+```
+
+### Ahora que ya hemos realizado el analisis de el comportamiento local o global de las variables ###
+## Vamos a avanzar en la validación utilizando una nueva muestra independiente ####
+
+
+```{r}
+
+dir <- ("C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/validacion")
+
+setwd(dir)
+
+validacion <- st_read(dsn = "li_datos8701_MV_validacion.gpkg", layer = "li_pts_18s")
+
+d_test <- st_set_crs(validacion, value = 32718)
+
+df_test <- as.data.frame(d_test)
+
+group_by(d_test, gali_8701_) %>% summarise(n())
+
+```
+## Validacion map ####
+
+```{r, include = T, warning = FALSE, message = FALSE, echo = FALSE}
+tmap_mode("view")
+  tm_shape(lingue)+
+    tm_polygons(col = "white")+
+  tm_shape(d_test) +
+  tm_dots(size = 0.1, col = "gali_8701_", breaks = c(0,1,2), palette = "Blues")+
+    tm_layout(title = "Puntos de muestreo lingue", bg.color = "gray", legend.position = c("right", "bottom"), frame.lwd = 3)
+
+```
+
+
+## PREPARACION DE LA BASE DE DATOS
+  - Eliminar puntos repetidos
+  
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+df_test <- distinct(df_test, x_1, y_1, .keep_all = TRUE)
+```
+  
+  - Estandarizar variables continuas asignando valores entre 0 y 1
+  
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+for (i in 6:23){
+  df_test[,i] <- scales::rescale(df_test[,i], c(0,1)) 
+  
+}
+```
+
+REVISAR LA VALIDACION DE LOS DATOS CON EL SCRIPT ORIGINAL
+
+ 
+## Calibración del modelo 
+  - El cálculo de la matriz de distancia
+  
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+#coords_train <- cbind(d_train$x_1, d_train$y_1)
+coords_test <- cbind(d_test$x_1, d_test$y_1)
+#spdf_train <- SpatialPointsDataFrame(coords_train, d_train)  
+spdf_test <- SpatialPointsDataFrame(coords_test, as.data.frame(d_test)) 
+#DM_train <- gw.dist(dp.locat = coords_train) 
+DM_test <- gw.dist(dp.locat = coords_train, rp.locat = coords_test) 
+
+```
+
+
+
+```{r, warning = FALSE, message = FALSE, echo=FALSE, include=FALSE}
+
+prediction <- gwr.predict(gali_8701_ ~ aptitud_agricola_lingue + aptitud_forVII_lingue + bn_lingue_87 + mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue +  dis_hid_lingue  + contag_600 + shdi_600 + division_600 + econ_mn_600 + enn_mn_600 + pend_lingue + dis_plant87_lingue + predios_lingue1, data = spdf_train, predictdata = spdf_test, bw = bw, kernel = "bisquare", adaptive = TRUE, dMat1 = DM_test, dMat2 = DM_train)
+
+test_pred <- as.data.frame(prediction$SDF)
+test_join <- cbind(test_pred, d_test)
+
+```
+
+
+
+```{r}
+res.binomial$GW.diagnostic
+
+```
+
+
+```{r}
+##ANALISIS DE RESIDUOS####
+#test i.moran
+data.dists <- as.matrix(dist(cbind(d_train$X, d_train$Y)))
+data.dists.inv <- 1/data.dists
+diag(data.dists.inv) <- 0
+data.dists.inv[1:5, 1:5]
+Moran.I(res.binomial$SDF$residual, data.dists.inv)
+```
+#comparacion residuos modelo global vs local
+```{r}
+res.glm <- SpatialPointsDataFrame(as.data.frame(res.binomial$glms$residuals), coords = coords_train)
+names(res.glm) <- "residual"
+grid.arrange(spplot(res.glm, "residual", main = "Residuos GLM"),
+             spplot(res.binomial$SDF, "residual", main = "Residuos GWLR"), ncol = 2)
+```
+```{r}
+predicted_class <- ifelse(test_join$prediction > 0.7, "Yes","No")
+performance_data <- data.frame(observed = test_join$gali_8701_,
+                               predicted = predicted_class)
+positive <- sum(performance_data$observed == 1)
+negative <- sum(performance_data$observed == 0)
+predicted_positive <- sum(performance_data$predicted == "Yes", na.rm = TRUE)
+predicted_negative <- sum(performance_data$predicted == "No", na.rm = TRUE)
+total <- nrow(performance_data)
+data.frame(positive, negative,predicted_positive,predicted_negative)
+
+
+
+tp <- sum(performance_data$observed == 1 & performance_data$predicted == "Yes", na.rm = TRUE)
+tn <- sum(performance_data$observed == 0 & performance_data$predicted == "No", na.rm = TRUE)
+fp <- sum(performance_data$observed == 0 & performance_data$predicted == "Yes", na.rm = TRUE)
+fn <- sum(performance_data$observed == 1 & performance_data$predicted == "No", na.rm = TRUE)
+data.frame(tp,tn,fp,fn)
+
+accuracy <- (tp + tn) / total
+error_rate <- (fp + fn) / total
+sensitivity <- tp / positive
+especificity <- tn / negative
+precision <- tp / predicted_positive
+npv <- tn / predicted_negative
+data.frame(accuracy, error_rate, sensitivity, especificity, precision, npv)
+
+```
+
+## VALIDACION DEL MODELO GWLR ####
+
+
+- Validación del modelo utilizando la curva ROC y el el area bajo la curva AUC.
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+test_join$gali_8701_ <- test_join$gali_8701_
+
+roc_auc <- pROC::roc(test_join$gali_8701_, test_join$prediction)
+roc_auc1 <- pROC::roc(test_join$gali_8701_, test_join$prediction, smoothed = TRUE,
+                      ci=TRUE, ci.alpha=0.9, stratified=FALSE,
+                      plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE,
+                      print.auc=TRUE, show.thres=TRUE)
+
+```
+
+- El valor auc es de `r roc_auc$auc`, esto  indican que el modelo tiene una buena capacidad de predición, muy por sobre el 0.5 considerado una predicción aleatoria. 
+  
+  *CURVA ROC Y VALOR DE AUC*
+
+```{r, include = T, warning = FALSE, message = FALSE, echo = FALSE}
+plot(roc_auc1)
+
+```
+
+## INTERPOLACION DE VARIABLES NO ESTACIONARIAS Y QUE SON "SIGNIFICATIVAS" ####
+
+
+## Visualizacion de los coeficientes
+  
+  - Los coeficientes se pueden visualizar como puntos y a través de la interpolación de los valores de los puntos 
+  
+  - A modo de ejemplo vamos a representar los valores 
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+library(terra)
+library(gstat)
+
+dir <- ("C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/datos_6")
+
+
+setwd(dir)
+
+lingue_puntos_gpkg <- st_read(dsn = "li_datos8701.gpkg", layer = "li_pts_18s")
+
+# Creamos un raster vacio para poder hacer la interpolacion
+empty_raster <- rast(crs = "EPSG:32718", extent = ext(lingue_puntos_gpkg), res = 30)
+
+int_coeficientes <- function(variable,raster){
+  a <- vect(res.binomial$SDF)
+  d <- data.frame(geom(a)[,c("x", "y")], as.data.frame(a))
+  gs <- gstat(formula=d[,variable]~1, locations=~x+y, data = d, nmax = 1, set=list(idp=1))
+  idw <- interpolate(raster, gs, debug.level = 0.0)
+}
+
+
+```
+
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+
+int_dis_plan <-int_coeficientes("dis_plant87_lingue",empty_raster)
+
+int_dis_com <- int_coeficientes("dis_comunidades_lingue",empty_raster)
+
+int_dis_hidro <- int_coeficientes("dis_hid_lingue",empty_raster)
+
+```
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+
+map_int_dis_plan <- 
+  tm_shape(int_dis_plan$var1.pred) +
+    tm_raster()+
+  tm_shape(lingue,col = "white") +
+    tm_polygons(alpha = 0.1)+
+  tm_layout(title = "Coef dis plantaciones", bg.color = "gray", frame.lwd = 3)+
+  tm_legend(legend.position = c("left", "bottom"), scale = 1)
+
+map_int_dis_com <- 
+  tm_shape(int_dis_com$var1.pred) +
+    tm_raster() +
+  tm_shape(lingue,col = "white") +
+    tm_polygons(alpha = 0.1) +
+  tm_layout(title = "Coef dis comunidades", bg.color = "gray", legend.position = c("right", "bottom"), frame.lwd = 3)
+
+map_int_dis_hidro <- 
+  tm_shape(int_dis_hidro$var1.pred) +
+    tm_raster()+
+  tm_shape(lingue,col = "white") +
+    tm_polygons(alpha = 0.1) +
+  tm_layout(title = "Coef dis hidrologia", bg.color = "gray", legend.position = c("right", "bottom"), frame.lwd = 3)
+
+```
+
+## Distribucion de los coeficientes de las distancias a plantacicones 
+
+```{r, include = T, warning = FALSE, message = FALSE, echo = FALSE}
+
+map_int_dis_plan
+
+```
+### Exportar los resultados para trabajar en QGIS
+
+```{r}
+
+dir <- ("C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/resultados")
+
+setwd(dir)
+
+```
+
+```{r}
+resultados <- st_as_sf(res.binomial$SDF)
+resultados_crs <- st_set_crs(resultados, value = 32718)
+
+
+```
+
+```{r}
+
+tmap_mode("view")
+  tm_shape(lingue)+
+    tm_polygons(col = "white")+
+  tm_shape(resultados_crs) +
+  tm_dots(size = 0.1, col = "shdi_600", breaks = c(-3,-2,-1,0,1,2,3,4,5), palette = "Blues")+
+    tm_layout(title = "Puntos de muestreo lingue", bg.color = "gray", legend.position = c("right", "bottom"), frame.lwd = 3)
+  
+```
+
+
+```{r}
+
+dir <- ("C:/Users/CRISTIAN/Universidad de Alcala/PUBLICACIONES UAH - Spatial logistic model forest plantation chile/datos/modelo_8701/resultados")
+
+setwd(dir)
+
+st_write(resultados_crs, dsn = "resultados.gpkg", layer = "lingue_glwr8701", delete_layer = TRUE)
+
+
+```
+
+
+```{r}
+# Investigar como calcular local statistics
+
+#---------------------------------------------------------------------------#
+##CALCULAR ESTADISTICAS DEL MODELO GWLR####
+#estadisticas locales y test de montecarlo ||el segundo proceso demora mucho tiempo en su calculo||
+#variables <- c("Elev", "Slope", "SinAspct", "CosAspct", "AbsSouth", "DistStrm")
+#local_stats <- gwss(res.binomial$SDF, vars = variables, bw = bw, kernel = "bisquare", adaptive = TRUE, dMat = DM_train)
+#test.mtc <- gwss.montecarlo(data = spdf_train, vars = variables, bw = bw, kernel ="bisquare", adaptive = T, dMat = DM_train)
+```
+
+
+
+
+

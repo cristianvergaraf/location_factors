@@ -1,0 +1,243 @@
+---
+title: "WGLR model"
+format: html
+editor: visual
+---
+
+En esta etapa vamos a calibrar un modelo geograficamente ponderado para cada uno de los 8 mejores modelos que han resultado del análisis global.
+
+Paso 1: Cargar las librerias
+
+```{r}
+
+library(GWmodel)
+library(sp)
+library(dplyr)
+library(scales)
+library(pROC)
+library(ape)
+library(gridExtra)
+library(sf)
+library(terra)
+library(tmap)
+library(tmaptools)
+library(ggplot2)
+library(RColorBrewer)
+library(MASS)
+library(car)
+library(gstat)
+library(sp)
+library(spatstat)
+library(knitr)
+library(kableExtra)
+library(DT)
+library(glmulti)
+library(raster)
+```
+
+Paso 2: Cargar los datos
+
+```{r}
+
+setwd("F:/modelo/datos/modelo_8715/glmulti8715")
+
+training_set <- read.csv("training_set.csv")
+training_set <- na.omit(training_set)
+
+testing_set <- read.csv("testing_set.csv")
+testing_set <- na.omit(testing_set)
+
+
+```
+
+Paso 3: Calculo de la matriz de distancia
+
+```{r}
+
+coords_train <- cbind(training_set$x, training_set$y)
+spdf_train <- SpatialPointsDataFrame(coords_train, training_set)  
+DM_train <- gw.dist(dp.locat = coords_train) 
+class(spdf_train)
+
+```
+
+Paso 4: Encontrar el bandwidth adecuado para cada uno de los modelos
+
+Modelo 49
+
+```{r}
+
+bw_49 <- bw.ggwr(gan_plant ~ mat_lingue_87 + cul_prad_lingue_87 +  dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+```
+
+```{r}
+
+res.modelo_49 <- ggwr.basic(gan_plant ~ mat_lingue_87 + cul_prad_lingue_87  +  dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_49, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+
+```
+
+Modelo 67
+
+```{r}
+
+bw_67 <- bw.ggwr(gan_plant ~ dem_lingue + mat_lingue_87 + cul_prad_lingue_87 +  dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+
+```
+
+Modelo 67 Ajuste modelo geograficamente ponderado
+
+```{r}
+
+res.modelo_67 <- ggwr.basic(gan_plant ~ dem_lingue + mat_lingue_87 + cul_prad_lingue_87  +  dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_67, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+
+```
+
+```{r}
+```
+
+Modelo 68
+
+```{r}
+
+bw_68 <- bw.ggwr(gan_plant ~ dem_lingue + mat_lingue_87 + cul_prad_lingue_87 +  dis_urbano_lingue + division_600 + econ_mn_600, pen_lingue15,  data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+
+```
+
+Ajuste Modelo 68
+
+```{r}
+
+res.modelo_68 <- ggwr.basic(gan_plant ~ dem_lingue + mat_lingue_87 + cul_prad_lingue_87  +   dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_68, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+
+```
+
+Modelo 69
+
+```{r}
+
+bw_69 <- bw.ggwr(gan_plant ~ dem_lingue + pen_lingue15 + aptitud_forVII_lingue + mat_lingue_87 + bn_lingue_87 + cul_prad_lingue_87 + dis_plant87_lingue + dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + dis_hid_lingue + contag_600 + division_600 + econ_mn_600 + predios_lingue1, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+
+```
+
+Ajuste Modelo 69
+
+```{r}
+
+res.modelo_69 <- ggwr.basic(gan_plant ~  mat_lingue_87 + cul_prad_lingue_87  + dis_comunidades_lingue + dis_urbano_lingue + dis_hid_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_69, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+```
+
+Modelo 157
+
+```{r}
+
+bw_157 <- bw.ggwr(gan_plant ~ bn_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+```
+
+Ajuste Modelo 157
+
+```{r}
+
+res.modelo_157 <- ggwr.basic(gan_plant ~  bn_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_157, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+```
+
+Modelo 226
+
+```{r}
+
+bw_226 <- bw.ggwr(gan_plant ~ dem_lingue + bn_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+```
+
+Ajustar Modelo 226
+
+```{r}
+
+res.modelo_226 <- ggwr.basic(gan_plant ~  dem_lingue + bn_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_226, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+
+```
+
+Modelo 227
+
+```{r}
+
+
+bw_227 <- bw.ggwr(gan_plant ~ mat_lingue_87 + cul_prad_lingue_87 +  dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+```
+
+Ajuste modelo 227
+
+```{r}
+
+res.modelo_227 <- ggwr.basic(gan_plant ~  mat_lingue_87 + cul_prad_lingue_87 +  dis_comunidades_lingue + dis_urbano_lingue + dis_caminos_lingue + division_600 + econ_mn_600 + pen_lingue15, data = spdf_train, bw = bw_227, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+
+```
+
+Modelo 242
+
+```{r}
+
+bw_242 <- bw.ggwr(gan_plant ~ mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + enn_mn_600 + pen_lingue15, data = spdf_train, family = "binomial", approach = "aic", kernel = "bisquare", adaptive = T, dMat = DM_train) 
+
+
+```
+
+Calibrar modelo 242
+
+```{r}
+
+res.modelo_242 <- ggwr.basic(gan_plant ~  mat_lingue_87 + cul_prad_lingue_87 +  dis_comunidades_lingue + dis_urbano_lingue + division_600 + econ_mn_600 + enn_mn_600 + pen_lingue15, data = spdf_train, bw = bw_242, kernel = "bisquare", family = "binomial", adaptive = T, dMat = DM_train)
+```
+
+Finalmente vamos a exportar cada uno de los resultados a una geopackages para hacer la interpolación en QGIS.
+
+Primero tenemos que transformar los SpatialDataFrame a sf objects
+
+```{r}
+
+sf_res.model_49 <- st_as_sf(res.modelo_49$SDF)
+sf_res.model_67 <- st_as_sf(res.modelo_67$SDF)
+sf_res.model_68 <- st_as_sf(res.modelo_68$SDF)
+sf_res.model_69 <- st_as_sf(res.modelo_69$SDF)
+sf_res.model_157 <- st_as_sf(res.modelo_157$SDF)
+sf_res.model_226 <- st_as_sf(res.modelo_226$SDF)
+sf_res.model_227 <- st_as_sf(res.modelo_227$SDF)
+sf_res.model_242 <- st_as_sf(res.modelo_242$SDF)
+
+```
+
+Segundo tenemos que asignar el sistema de coordenadas
+
+```{r}
+
+st_crs(sf_res.model_49) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs"
+st_crs(sf_res.model_67) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs"
+st_crs(sf_res.model_69) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs"
+st_crs(sf_res.model_157) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs"
+st_crs(sf_res.model_226) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs"
+st_crs(sf_res.model_227) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs" 
+st_crs(sf_res.model_242) <- "+proj=utm +zone=18 +south +datum=WGS84 +units=m +no_defs +type=crs"
+
+```
+
+```{r}
+
+setwd("F:/modelo/datos/modelo_8715/resultados/modelos")
+
+st_write(sf_res.model_49, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_49", append = FALSE)
+st_write(sf_res.model_67, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_67", append = FALSE)
+st_write(sf_res.model_68, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_68", append = FALSE)
+st_write(sf_res.model_69, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_69", append = FALSE)
+st_write(sf_res.model_157, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_157", append = FALSE)
+st_write(sf_res.model_226, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_226", append = FALSE)
+st_write(sf_res.model_227, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_227", append = FALSE)
+st_write(sf_res.model_242, dsn = "8_best_model_wglr.gpkg", layer = "res.modelo_242", append = FALSE)
+
+
+
+```

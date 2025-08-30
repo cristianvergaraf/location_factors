@@ -1,0 +1,165 @@
+---
+title: "Metodos y resultados preliminares GWLR lingue"
+author: "Cristian Vergara"
+date: "05/31/2022"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
+
+```
+
+
+## Librerias utilizadas para este trabajo
+
+```{r, include= TRUE, warning = FALSE, message = FALSE, echo = TRUE}
+library(GWmodel)
+library(sp)
+library(dplyr)
+library(scales)
+library(pROC)
+library(ape)
+library(gridExtra)
+library(sf)
+library(terra)
+library(tmap)
+library(tmaptools)
+library(ggplot2)
+library(RColorBrewer)
+library(MASS)
+library(car)
+library(gstat)
+library(sp)
+library(spatstat)
+library(knitr)
+library(kableExtra)
+library(DT)
+library(glmulti)
+library(raster)
+
+```
+```{r}
+options(scipen=999)
+```
+
+```{r}
+
+source("~/github/location_factors/scripts/modelos/definitions.R")
+```
+
+```{r, include = F, warning = FALSE, message = FALSE, echo = FALSE}
+
+setwd("~/github/location_factors")
+source("scripts/modelos/definitions.R")
+
+pl_data <- read.csv("datos/processed/csv/datos_modelo_completo_2025.csv")
+  
+pl_data <- na.omit(pl_data)
+
+```
+
+## Datos de entrada
+
+```{r, warning = FALSE, message = FALSE, options("kableExtra.html.bsTable" = T)}
+DT::datatable(pl_data)
+```
+
+```{r}
+
+gl_multi_model <- glmulti(
+    glmulti_args$formula,
+    data = spdf_train,
+    level = glmulti_args$level,
+    family = glmulti_args$family,
+    method = glmulti_args$method,
+    confsetsize = glmulti_args$confsetsize,
+    crit = glmulti_args$crit,
+    plotty = glmulti_args$plotty,
+    report = glmulti_args$report
+)
+
+
+```
+
+GLMULTI
+
+```{r}
+
+
+ glmulti(formula = gan_plant_8715 ~ aptitud_forVII_lingue + bn_lingue_87 +
+        mat_lingue_87 + cul_prad_lingue_87 + dis_comunidades_lingue + dis_urbano_lingue + 
+        dis_caminos_lingue + dis_hid_lingue +  pen_lingue15 + dis_plant87_lingue + predios_lingue1, level = 1, data = spdf_train, family = binomial, method = "h", confsetsize = 300, crit = aic, plotty = TRUE, report = TRUE)
+
+
+```
+
+Modelos Y AIC WEIGHTS
+
+```{r}
+
+wgt <- weightable(gl_multi_model)
+
+```
+
+
+```{r}
+wgt1 <- wgt[wgt$aic <= min(wgt$aic) +2,]
+
+wgt1
+
+```
+
+```{r}
+summary(test_lingue_8701@objects[[1]])
+summary(test_lingue_8701@objects[[2]])
+summary(test_lingue_8701@objects[[3]])
+summary(test_lingue_8701@objects[[4]])
+summary(test_lingue_8701@objects[[5]])
+summary(test_lingue_8701@objects[[6]])
+summary(test_lingue_8701@objects[[7]])
+summary(test_lingue_8701@objects[[8]])
+summary(test_lingue_8701@objects[[9]])
+summary(test_lingue_8701@objects[[10]])
+
+
+```
+
+```{r}
+
+anova(test_lingue_8701@objects[[1]], test ="LRT")
+anova(test_lingue_8701@objects[[2]], test ="LRT")
+anova(test_lingue_8701@objects[[3]], test ="LRT")
+anova(test_lingue_8701@objects[[4]], test ="LRT")
+anova(test_lingue_8701@objects[[5]], test ="LRT")
+anova(test_lingue_8701@objects[[6]], test ="LRT")
+anova(test_lingue_8701@objects[[7]], test ="LRT")
+anova(test_lingue_8701@objects[[8]], test ="LRT")
+anova(test_lingue_8701@objects[[9]], test ="LRT")
+anova(test_lingue_8701@objects[[10]], test ="LRT")
+
+
+
+
+```
+
+```{r}
+avg_lingue8701 <- coef.glmulti(gl_multi_model, select="all", varweighting ="Buckland", icmethod ="Lukacs")
+```
+
+avg_lingue8701
+
+
+```{r}
+avg_lingue8701_1 <- coef.glmulti(gl_multi_model, select= 100, varweighting ="Buckland", icmethod ="Lukacs")
+```
+
+avg_lingue8701_1
+  
+  
+```{r}
+avg_lingue8701_100 <- coef.glmulti(gl_multi_model, select= as.integer(10), varweighting ="Buckland", icmethod ="Lukacs")
+```
+
+avg_lingue8701_100
+

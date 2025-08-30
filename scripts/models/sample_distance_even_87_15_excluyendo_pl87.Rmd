@@ -1,0 +1,74 @@
+---
+title: "Sample_even_distance"
+author: "Cristian Vergara"
+date: '2022-07-11'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r}
+
+setwd("F:/modelo/datos/clasificacion_lingue/patches")
+
+library(raster)
+
+gan_lingue_8715 <- raster("m_lingue_Q_0.5ha_t.tif")
+
+plot(gan_lingue_8715)
+
+```
+
+
+```{r}
+
+### Transformamos a dataframe
+
+df_gan8715_ras <- as.data.frame(rasterToPoints(gan_lingue_8715), spatial = TRUE)
+
+```
+
+CARGAR LIBRERIAS
+
+```{r}
+
+library(sp)
+library(spatialEco)
+
+coords <- cbind(df_gan8715_ras$x, df_gan8715_ras$y)
+spdf <- SpatialPointsDataFrame(coords, df_gan8715_ras)
+
+
+```
+
+```{r}
+spdf_sample <- subsample.distance(spdf, 400, 500)
+
+sample <- sf::st_as_sf(spdf_sample)
+
+sample1 <- st_set_crs(sample, value = 32718)
+
+```
+
+```{r}
+
+group_by(sample1, gali_8701_05he) %>% dplyr::summarise(n())
+
+```
+
+
+
+```{r}
+
+tmap_mode("view")
+  tm_shape(lingue)+
+    tm_polygons(col = "white") +
+  tm_shape(sample1) +
+  tm_dots(size = 0.1, col = "gali_8701_05he", breaks = c(0,1,2), palette = "Blues")+
+    tm_layout(title = "Puntos de muestreo lingue", bg.color = "gray", legend.position = c("right", "bottom"), frame.lwd = 3) 
+    
+```
