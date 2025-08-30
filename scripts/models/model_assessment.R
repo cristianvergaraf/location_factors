@@ -238,3 +238,4 @@ calculate_fom_image_binary <- function(t1, t2_real, t2_sim) {
 
 
 
+
