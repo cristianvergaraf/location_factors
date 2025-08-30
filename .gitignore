@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+data/
+model_outputs/
+notebook/
+rds/
+renv/
+models/preprocessing/
+QGIS_VIZ.qgz
+
