@@ -239,6 +239,31 @@ calculate_fom_image_binary <- function(t1, t2_real, t2_sim) {
     return(fom)
 }
 
+compute_spatial_auc_from_raster_images <- function(real_gain,pred_gain){
+    # Real gain raster layer real gain from t1 to t2 values 1-0
+    # Pred gain is transition potential image with probability values
+    
+    
+    # Extract values of each pixel
+    real_gain_values <- values(real_gain, mat = FALSE)
+    pred_gain_values <- values(pred_gain, mat = FALSE)
+    
+    # Delete NA values 
+    
+    valid_idx <- !is.na(real_gain_values) & !is.na(pred_gain_values)
+    
+    valid_real_gains_values <- real_gain_values[valid_idx]
+    valid_pred_gains_Values <- pred_gain_values[valid_idx]
+    
+    # Calculate ROC
+    
+    spatial_roc_curve <- pROC::roc(response = valid_real_gains_values,predictor = valid_pred_gains_Values)
+    
+    spatial_auc <- spatial_roc_curve$auc
+    
+    return(spatial_auc)
+    
+}
 
 
 

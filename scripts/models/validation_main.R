@@ -16,7 +16,7 @@ source("scripts/models/model_assessment.R")
 
 # Real gain of forest plantation 
 
-gan_patches_8715 <- rast(gan_patches_8715_file)
+real_plantation_gains_8715 <- rast(gan_patches_8715_file)
 
 plantation_1987 <- rast("data/processed/raster/validation_required_images/plantation_1987_mask_final.tif")
 
@@ -25,7 +25,7 @@ real_plantation_2015 <- rast("data/processed/raster/validation_required_images/r
 
 # We calculate the gain in pixels for forest plantation from 1987-2015
 
-plantation_gain_pixel_8715 = calculate_quantity_pixel_for_category(gan_patches_8715,1)
+plantation_gain_pixel_8715 = calculate_quantity_pixel_for_category(real_plantation_gains_8715,1)
 
 # Import mask
 
@@ -52,62 +52,15 @@ spatial_variables <- terra::rast(variables)
 glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model_20250815_094328.rds")
 
 
-## simulation gains calculate based on model, spatial predict variables, pixel number of change, mask_plantation_1987 in na
-
-sim_gain <- simulations_gains(model = glmulti_models@objects[[287]], spatial_predict_variables = spatial_variables,
-                  pixel_number = plantation_gain_pixel_8715, original_plantation_mask = plantation_1987_na_mask)
+# Iterative process to compute and save spatial and non spatial metrics for each model
 
 
-plot(terra::predict(spatial_variables, glmulti_models@objects[[299]], type = "response"))
+### Function to calculate spatial ROC from real expansion and simulated expansion
 
-### I need to define a function for this stage
-
-plot(sim_gain)
-
-## sim_gain has na values, it need to be standarize to be use in the calculation ob
-## na values where plantation in 1987 was presented is fill with 1 values, and 
-## na values where no plantation was present in 1987 are na
-
-sim_plantation_2015 <- prepare_simulation_raster(sim_img = sim_gain, lingue_mask_positive = lingue_mask_positive, plantation_1987 = plantation_1987)
-
-plot(sim_plantation_2015)
-
-# FOM CALCULATION
-
-calculate_fom(ref_img=real_plantation_2015, sim_img = sim_plantation_2015)
-
-plot(calculate_fom_image_binary(plantation_1987,real_plantation_2015,sim_plantation_2015))
-
-figure_list <- list()
+pred_plantation_gains_8715 <- terra::predict(spatial_variables, glmulti_models@objects[[1]], type = "response")
 
 
-for (i in 250:260){
-    sim_gain <- simulations_gains(glmulti_models@objects[[i]], spatial_variables, plantation_gain_pixel_8715, original_plantation_mask = plantation_1987_na_mask)
-    sim_plantation_2015 <- prepare_simulation_raster(sim_img = sim_gain, lingue_mask_positive = lingue_mask_positive, plantation_1987 = plantation_1987)
-    fom = calculate_fom(ref_img = real_plantation_2015, sim_plantation_2015)
-    figure_list <- c(figure_list, list(fom))
-}
-
-
-
-figure_list_apply <- lapply(1:10, function(i){ 
-    simulations_gains(
-        glmulti_models@objects[[i]], 
-        spatial_variables, 
-        plantation_gain_pixel_8715, 
-        original_plantation_mask = plantation_1987_na_mask)
-    
-    sim_plantation_2015 <- prepare_simulation_raster(sim_img = sim_gain, lingue_mask_positive = lingue_mask_positive, plantation_1987 = plantation_1987)
-    
-    fom = calculate_fom(ref_img = real_plantation_2015, sim_plantation_2015)
-})
-
-
-formula(glmulti_models@objects[[1]])
-
-# REPETIR EL PROCESO PARA CALCULAR LAS OTRAS MÉTRICAS ROC, AUC, TOC,
-# NECESITO GUARDAR TAMBIÉN EL AIC DE CADA MODELO, LAS VARIABLES, ROC, AUC, BOLEAN.
-
+#################
 
 
 validate_model <- function(i, glmulti_models, spatial_variables,
@@ -115,10 +68,14 @@ validate_model <- function(i, glmulti_models, spatial_variables,
                            plantation_1987_na_mask,
                            lingue_mask_positive,
                            plantation_1987,
-                           real_plantation_2015){
+                           real_plantation_2015,
+                           real_plantation_gains_8715){
     
     # Model i
     model_i <- glmulti_models@objects[[i]]
+    
+    pred_plantation_gains_8715 <- terra::predict(spatial_variables, model_i, type = "response")
+    
     
     # Extract variables used in this model
     vars_i <- all.vars(formula(model_i))[-1] # drop response variable
@@ -157,6 +114,10 @@ validate_model <- function(i, glmulti_models, spatial_variables,
         sim_plantation_2015
     )
     
+    # Calculate spatial ROC
+    
+    spatial_auc = compute_spatial_auc_from_raster_images(real_plantation_gains_8715,pred_plantation_gains_8715)
+    
     # Return structured output
     list(
         model_id = i,
@@ -168,11 +129,35 @@ validate_model <- function(i, glmulti_models, spatial_variables,
         null_deviance = null_dev,
         residual_dev = resid_dev,
         dev_explained = dev_explained,
-        MCFaddenPseudoR2 = 1 - resid_dev / null_dev
+        MCFaddenPseudoR2 = 1 - resid_dev / null_dev,
+        #TODO: ADD TRAINING AUC TO ASSESS OVERFITTING
+        #TODO: ADD TESTING AUC TO ASSESS OVERFITTING
+        #TODO: ADD TOC HOW TO CALCULATE TOC
+        spatial_auc = spatial_auc
+        
         
     )
     
 }
+
+##TODO: CHECK WHY IS NOT FUNCTIONING
+results_df <- do.call(rbind, lapply(results_list, function(x){
+    
+    data.frame(
+        model_id = x$model_id,
+        fom = x$fom,
+        aic = x$aic,
+        #TODO: ADD TRAINING AUC TO ASSESS OVERFITTING
+        #TODO: ADD TESTING AUC TO ASSESS OVERFITTING
+        #TODO: ADD TOC HOW TO CALCULATE TOC
+        spatial_auc = x$spatial_auc,
+        variables = paste(x$variables, collapse = ","),
+        stringsAsFactors = FALSE
+    )
+}))
+
+
+results_df
 
 ## Run validation across top 10 models
 
@@ -189,6 +174,13 @@ results_list <- lapply(1:10, function(i){
     )
 })
 
+
+
+
+
+
+
+results_list
 
 source("config/paths.R")
 
