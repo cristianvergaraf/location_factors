@@ -6,6 +6,7 @@ source("config/load_packages.R")
 
 source("scripts/helpers/model_tracking.R")
 
+
 ## Set working directory
 
 source("config/paths.R")
@@ -119,26 +120,42 @@ validate_model <- function(i, glmulti_models, spatial_variables,
     spatial_auc = compute_spatial_auc_from_raster_images(real_plantation_gains_8715,pred_plantation_gains_8715)
     
     # Return structured output
-    list(
+    data.frame(
         model_id = i,
         fom = fom_val,
-        variables = vars_i,
+        variables = paste(vars_i, collapse = ","),
         aic = aic,
         null_aic = aic_null,
         delta_aic = delta_aic,
         null_deviance = null_dev,
         residual_dev = resid_dev,
         dev_explained = dev_explained,
-        MCFaddenPseudoR2 = 1 - resid_dev / null_dev,
-        #TODO: ADD TRAINING AUC TO ASSESS OVERFITTING
-        #TODO: ADD TESTING AUC TO ASSESS OVERFITTING
-        #TODO: ADD TOC HOW TO CALCULATE TOC
-        spatial_auc = spatial_auc
-        
-        
+        MCFaddenPseudoR2 = pseudoR2,
+        spatial_auc = as.numeric(spatial_auc),
+        stringsAsFactors = FALSE
     )
     
 }
+
+
+
+## Run validation across top 10 models
+
+results_list <- lapply(1:10, function(i){
+    validate_model(
+        i,
+        glmulti_models,
+        spatial_variables,
+        plantation_gain_pixel_8715,
+        plantation_1987_na_mask,
+        lingue_mask_positive,
+        plantation_1987,
+        real_plantation_2015,
+        real_plantation_gains_8715
+    )
+})
+
+
 
 ##TODO: CHECK WHY IS NOT FUNCTIONING
 results_df <- do.call(rbind, lapply(results_list, function(x){
@@ -159,24 +176,22 @@ results_df <- do.call(rbind, lapply(results_list, function(x){
 
 results_df
 
-## Run validation across top 10 models
-
-results_list <- lapply(1:10, function(i){
-    validate_model(
-        i,
-        glmulti_models,
-        spatial_variables,
-        plantation_gain_pixel_8715,
-        plantation_1987_na_mask,
-        lingue_mask_positive,
-        plantation_1987,
-        real_plantation_2015
+results_df <- do.call(rbind, lapply(results_list, function(x) {
+    data.frame(
+        model_id        = x$model_id,
+        fom             = x$fom,
+        aic             = x$aic,
+        null_aic        = x$null_aic,
+        delta_aic       = x$delta_aic,
+        null_deviance   = x$null_deviance,
+        residual_dev    = x$residual_dev,
+        dev_explained   = x$dev_explained,
+        MCFaddenPseudoR2= x$MCFaddenPseudoR2,
+        spatial_auc     = as.numeric(x$spatial_auc$auc),  # extract the AUC
+        variables       = paste(x$variables, collapse = ","),  # collapse into string
+        stringsAsFactors = FALSE
     )
-})
-
-
-
-
+}))
 
 
 
