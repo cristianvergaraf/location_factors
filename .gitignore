@@ -2,7 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
-data/
+data/processed/raster/
+data/processed/sample/
+data/processed/vector/
+data/raw/
+data/tables/
 model_outputs/
 notebook/
 rds/
