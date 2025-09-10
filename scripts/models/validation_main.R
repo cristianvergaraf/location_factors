@@ -6,7 +6,6 @@ source("config/load_packages.R")
 
 source("scripts/helpers/model_tracking.R")
 
-
 ## Set working directory
 
 source("config/paths.R")
@@ -60,6 +59,13 @@ glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model
 
 pred_plantation_gains_8715 <- terra::predict(spatial_variables, glmulti_models@objects[[1]], type = "response")
 
+#### We are going to compute training and testing AUC 
+
+source("config/paths.R")
+
+#### Load Data Training Data
+
+training_data <- read.csv(training_data_file)
 
 #################
 
@@ -70,7 +76,8 @@ validate_model <- function(i, glmulti_models, spatial_variables,
                            lingue_mask_positive,
                            plantation_1987,
                            real_plantation_2015,
-                           real_plantation_gains_8715){
+                           real_plantation_gains_8715,
+                           training_data){
     
     # Model i
     model_i <- glmulti_models@objects[[i]]
@@ -115,6 +122,10 @@ validate_model <- function(i, glmulti_models, spatial_variables,
         sim_plantation_2015
     )
     
+    ## compute AUC with training data
+    
+    train_auc = compute_auc(training_data, model_i, 'gan_plant_8715')
+    
     # Calculate spatial ROC
     
     spatial_auc = compute_spatial_auc_from_raster_images(real_plantation_gains_8715,pred_plantation_gains_8715)
@@ -131,8 +142,8 @@ validate_model <- function(i, glmulti_models, spatial_variables,
         residual_dev = resid_dev,
         dev_explained = dev_explained,
         MCFaddenPseudoR2 = pseudoR2,
-        spatial_auc = as.numeric(spatial_auc)
-        #TODO: ADD TRAINING AUC TO ASSESS OVERFITTING
+        spatial_auc = as.numeric(spatial_auc),
+        training_auc = as.numeric(train_auc)
         #TODO: ADD TESTING AUC TO ASSESS OVERFITTING
         #TODO: ADD TOC HOW TO CALCULATE TOC
     )
@@ -148,21 +159,10 @@ results_tibble <- purrr::map_dfr(1:10, ~ validate_model(
     lingue_mask_positive,
     plantation_1987,
     real_plantation_2015,
-    real_plantation_gains_8715
+    real_plantation_gains_8715,
+    training_data
 ))
 
-
-
-
-## We are going to compute training and testing auc
-
-source("config/paths.R")
-
-### Load Data Training Data
-
-spdf_train <- read.csv(training_data_file)
-ç
-# Here we are calculating the train AUC, then we will calculate the test AUC
-training_auc = compute_auc(spdf_train, glmulti_models@objects[[1]], 'gan_plant_8715')
+## Results
 
 

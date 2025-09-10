@@ -53,12 +53,9 @@ setwd("F:/modelo/datos/modelo_8715/datos_modelo/modelo_final") # Rutas a configu
 ## PAra obtener la ganancia para una superficie determinada que es la superficie
 ## de ganancia original.
 
-
 mask = terra::ifel(is.na(gan_patches_8715), NA, 1)
 
-
 ### Calibrar el modelo con todos los puntos.
-
 
 library(GWmodel)
 library(sp)
@@ -84,7 +81,6 @@ library(DT)
 library(glmulti)
 library(raster)
 
-
 setwd("F:/modelo/datos/clasificacion_lingue/patches")
 
 gan_patches_8715 <- rast('m_lingue_Q_0.5ha_t.tif')
@@ -92,7 +88,6 @@ gan_patches_8715 <- rast('m_lingue_Q_0.5ha_t.tif')
 mask = terra::ifel(is.na(gan_patches_8715), NA, 1)
 
 simulacion <- evaluar_simulacion(404905, glmulti_model@objects[[1]], mask= mask)
-
 
 for (i in 1:10){
   
