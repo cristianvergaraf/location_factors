@@ -1,44 +1,47 @@
 
-data_extraction_from_points_to_spatial_raster <- function(spatial_predictor_rast_stack,sample_points_vect,results_path){ 
+data_extraction_from_points_to_spatial_raster <- function(
+        spatial_predictor_rast_stack,
+        sample_points_sf,
+        table_name,
+        csv_results_path,
+        vector_results_path){ 
     
     # spatial_predictor_rast_stack: is a rast stack object containing all raster 
     # sample_points_vec: is a vectorial vect containing the sample points to extract the value
     
     ## Reproject if needed
     
-   # if (!st_crs(sample_points_vect) == crs(spatial_predictor_rast_stack)){
-    #    message("Reprojecting points to match raster CRS...")
-     #   sample_points_vect <- project(sample_points_vect, crs(spatial_predictor_rast_stack))
-      #  sample_points_vect <- st_transform(lingue_puntos, st_crs(raster_stack))
+    if (st_crs(sample_points_sf) != st_crs(spatial_predictor_rast_stack)){
+        stop("❌ CRS mismatch: sample points and raster stack must have the same CRS.")
+    }
+        #sample_points_sf <- st_transform(sample_points_sf, st_crs(spatial_predictor_rast_stack))
         
-    #}
+    
     
     # Extract raster values at point locations
     
-    ##TODO: AGREGAR AQUI QUE SE DE ENTRADA UN SF, Y LUEGO TRANSFORMAR A VECT
+  
+    sample_points_vect = vect(sample_points_sf)
     
     value_ext <- terra::extract(spatial_predictor_rast_stack,sample_points_vect, xy = TRUE, cells = TRUE)
     
     # Merge with attributes from the points shapefile
-    
-    sp_datos <- lingue_puntos %>%
-        mutate(ID = row_number()) %>%
-        right_join(value_ext, by = c("ID"="ID")) %>%
-        select(-c(cell,x,y)) # drop duplicate geometry helper columns
+    #value_ext_sf <- st_as_sf(as.data.frame(value_ext))
+    data_sf <- cbind(sample_points_sf, value_ext[,-1])  # drop duplicate ID
     
     # Prepare tabular version (drop geometry)
-    datos_tabla <- st_drop_geometry(sf_datos)
+    data_df <- st_drop_geometry(data_sf)
     
     # Build path
-    csv_path <- file.path(dir_salida, paste0(nombre_table, ".csv"))
-    gpkg_path <- file.path(dir_salida, paste0(nombre_tabla, "gpkg"))
+    csv_path <- file.path(csv_results_path, paste0(table_name,".csv"))
+    gpkg_path <- file.path(vector_results_path, paste0(table_name,".gpkg"))
     
-    # Write outputs
-    write.csv(datos_tabla, csv_path, row.names = FALSE)
-    st_write(sf_datos, dsn = gpkg_path, layer = nombre_table, delete_layer = TRUE, quiet = TRUE)
+    #Write outputs
+    write.csv(data_df, csv_path, row.names = FALSE)
+    st_write(data_sf, dsn = gpkg_path, layer = table_name, delete_layer = TRUE, quiet = TRUE)
     
-    message("Outputs written to :", dir_salida)
+    message("Outputs written to :", csv_results_path, " and ", vector_results_path)
     
-    invisible(sf_datos)
+    invisible(data_sf)
     
     }
