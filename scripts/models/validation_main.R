@@ -66,6 +66,27 @@ source("config/paths.R")
 #### Load Data Training Data
 
 training_data <- read.csv(training_data_file)
+test_data <- read.csv(test_data_file)
+
+test_data
+
+# Run simulation for this model
+sim_gain <- simulations_gains(
+    glmulti_models@objects[[1]],
+    spatial_variables,
+    plantation_gain_pixel_8715,
+    original_plantation_mask = plantation_1987_na_mask
+)
+
+df_metrics <- data.frame(
+    site = 1:ncell(sim_gain),
+    observed = values(real_plantation_gains_8715),
+    predicted = values(sim_gain)
+)
+
+df_metrics <- df_metrics[!is.na(df_metrics$observed), ]
+
+df_metrics
 
 #################
 
@@ -77,7 +98,8 @@ validate_model <- function(i, glmulti_models, spatial_variables,
                            plantation_1987,
                            real_plantation_2015,
                            real_plantation_gains_8715,
-                           training_data){
+                           training_data,
+                           test_data){
     
     # Model i
     model_i <- glmulti_models@objects[[i]]
@@ -126,6 +148,10 @@ validate_model <- function(i, glmulti_models, spatial_variables,
     
     train_auc = compute_auc(training_data, model_i, 'gan_plant_8715')
     
+    ## compute AUC with test data
+    
+    test_auc = compute_auc(test_data, model_i, 'ras_gan_patches_8715_exp87')
+    
     # Calculate spatial ROC
     
     spatial_auc = compute_spatial_auc_from_raster_images(real_plantation_gains_8715,pred_plantation_gains_8715)
@@ -143,8 +169,8 @@ validate_model <- function(i, glmulti_models, spatial_variables,
         dev_explained = dev_explained,
         MCFaddenPseudoR2 = pseudoR2,
         spatial_auc = as.numeric(spatial_auc),
-        training_auc = as.numeric(train_auc)
-        #TODO: ADD TESTING AUC TO ASSESS OVERFITTING
+        training_auc = as.numeric(train_auc),
+        test_auc = as.numeric(test_auc)
         #TODO: ADD TOC HOW TO CALCULATE TOC
     )
     
@@ -160,9 +186,7 @@ results_tibble <- purrr::map_dfr(1:10, ~ validate_model(
     plantation_1987,
     real_plantation_2015,
     real_plantation_gains_8715,
-    training_data
+    training_data,
+    test_data
 ))
-
-## Results
-
 

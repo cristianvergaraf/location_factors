@@ -27,10 +27,12 @@ data_extraction_from_points_to_spatial_raster <- function(
     
     # Merge with attributes from the points shapefile
     #value_ext_sf <- st_as_sf(as.data.frame(value_ext))
-    data_sf <- cbind(sample_points_sf, value_ext[,-1])  # drop duplicate ID
-    
+    data_sf <- cbind(sample_points_sf, value_ext[,-1])
+
     # Prepare tabular version (drop geometry)
     data_df <- st_drop_geometry(data_sf)
+    
+    data_df
     
     # Build path
     csv_path <- file.path(csv_results_path, paste0(table_name,".csv"))

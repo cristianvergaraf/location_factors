@@ -21,7 +21,7 @@ vector_results_path = "data/processed/vector"
 data_extraction_from_points_to_spatial_raster(spatial_variables,,"train_data_pl8715", csv_results_path, vector_results_path)
 
 
-# load test sample vector data
+## load test sample vector data
 
 points_sf <- st_read("data/processed/vector/test_gan_8715_500m.gpkg", layer = "test_lingue_8715_sin_plantaciones")
 
@@ -34,7 +34,6 @@ csv_results_path = "data/processed/csv"
 vector_results_path = "data/processed/vector"
 
 data_extraction_from_points_to_spatial_raster(spatial_variables, points_sf_32718,"test_data_pl8715", csv_results_path, vector_results_path)
-
 
 
 
