@@ -17,25 +17,25 @@ source("scripts/models/model_assessment.R")
 # Real gain of forest plantation 
 
 real_plantation_gains_8715 <- rast(gan_patches_8715_file)
-
+datatype(real_plantation_gains_8715)
 plantation_1987 <- rast("data/processed/raster/validation_required_images/plantation_1987_mask_final.tif")
-
+datatype(plantation_1987)
 real_plantation_2015 <- rast("data/processed/raster/validation_required_images/real_plantation_2015.tif")
-
+datatype(real_plantation_2015)
 
 # We calculate the gain in pixels for forest plantation from 1987-2015
 
 plantation_gain_pixel_8715 = calculate_quantity_pixel_for_category(real_plantation_gains_8715,1)
-
 # Import mask
 
 lingue_mask_negative <- rast("data/processed/raster/mask/mask_lingue_1987.tif")
-
+datatype(lingue_mask_negative)
 plantation_1987_na_mask <- rast("data/processed/raster/mask/mask_plantation_1987.tif")
 
+datatype(plantation_1987_na_mask)
 
 lingue_mask_positive <- rast("data/processed/raster/mask/lingue_mask_positive.tif")
-
+datatype(lingue_mask_positive)
 
 ## load spatial data
 
@@ -54,10 +54,20 @@ glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model
 
 # Iterative process to compute and save spatial and non spatial metrics for each model
 
-
+datatype(spatial_variables[[14]])
 ### Function to calculate spatial ROC from real expansion and simulated expansion
 
+spatial_variables
+
 pred_plantation_gains_8715 <- terra::predict(spatial_variables, glmulti_models@objects[[1]], type = "response")
+
+plot(pred_plantation_gains_8715)
+
+values(pred_plantation_gains_8715)
+
+datatype(pred_plantation_gains_8715)
+
+terra::datatype(pred_plantation_gains_8715)
 
 #### We are going to compute training and testing AUC 
 
@@ -78,15 +88,86 @@ sim_gain <- simulations_gains(
     original_plantation_mask = plantation_1987_na_mask
 )
 
-df_metrics <- data.frame(
-    site = 1:ncell(sim_gain),
-    observed = values(real_plantation_gains_8715),
-    predicted = values(sim_gain)
+datatype(sim_gain)
+
+# Build plantation total for 2015
+
+sim_plantation_2015 <- prepare_simulation_raster(
+    sim_img = sim_gain,
+    lingue_mask_positive = lingue_mask_positive,
+    plantation_1987 = plantation_1987
 )
 
-df_metrics <- df_metrics[!is.na(df_metrics$observed), ]
 
-df_metrics
+# Prepare the data we need sim_gain withou na inside
+# What does mask do
+
+plot(lingue_mask_positive)
+
+
+values(pred_plantation_gains_8715)[is.nan(values(pred_plantation_gains_8715))] <- NA
+values(sim_plantation_2015)[is.nan(values(sim_plantation_2015))] <- NA
+values(lingue_mask_positive)[is.nan(values(lingue_mask_positive))] <- NA
+
+NAflag(pred_plantation_gains_8715)
+NAflag(sim_plantation_2015)
+NAflag(lingue_mask_positive)
+
+
+template <- pred_plantation_gains_8715
+
+# Find the common set of non-NA cells across all rasters.
+# This ensures NA values are in the exact same locations.
+valid_cells <- !is.na(pred_plantation_gains_8715) & !is.na(sim_plantation_2015) & !is.na(lingue_mask_positive)
+na_mask <- is.na(pred_plantation_gains_8715) | is.na(sim_plantation_2015) | is.na(lingue_mask_positive)
+
+# Create a clean version of the first raster, where cells that are NA in ANY
+# of the rasters are set to NA.
+
+pred_clean1 <- pred_plantation_gains_8715
+pred_clean1[!valid_cells] <- NA
+
+sim_plantation_2015_clean <- sim_plantation_2015
+sim_plantation_2015_clean[!valid_cells] <- NA
+
+lingue_mask_positive_clean <- lingue_mask_positive
+lingue_mask_positive_clean[!valid_cells] <- NA
+
+
+TOC_values = TOC::TOC(pred_clean1,sim_plantation_2015_clean,mask= lingue_mask_positive_clean, nthres = 100)
+
+TOC_values
+
+plot(TOC_values, labelThres = TRUE, cex = 0.8, posL = 4)
+
+# Resample the other two rasters to match the template's extent, resolution, and CRS.
+# Use 'ngb' (nearest neighbor) for your mask, as it's likely categorical data.
+
+
+# Create a logical mask where TRUE indicates a valid pixel in all three rasters
+valid_cells <- !is.na(pred_plantation_gains_8715) & !is.na(sim_plantation_2015) & !is.na(lingue_mask_positive)
+
+# Use ifel() to create a new raster where pixels that are not valid
+# in all three rasters are set to NA.
+pred_clean <- terra::ifel(valid_cells, pred_plantation_gains_8715, NA)
+sim_clean <- terra::ifel(valid_cells, sim_plantation_2015, NA)
+lingue_clean <- terra::ifel(valid_cells, lingue_mask_positive, NA)
+
+
+
+sim_plantation_2015_resampled <- resample(sim_plantation_2015, template, method = 'near')
+lingue_mask_positive_resampled <- resample(lingue_mask_positive, template, method = 'near')
+
+
+datatype(pred_plantation_gains_8715, bylyr=TRUE)
+
+values_pred <- values(pred_plantation_gains_8715)
+
+class(values_pred)
+
+
+# https://www.youtube.com/watch?v=1JRwVOi0FSE
+
 
 #################
 

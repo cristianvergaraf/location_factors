@@ -8,6 +8,21 @@ ranking_values_raster <- function(imagen){
   return(imagen)
 } 
 
+ranking_values_raster_review <- function(imagen) {
+    # Get a copy of the original raster to maintain metadata
+    out_raster <- imagen
+    
+    # Extract values and rank them
+    imagen_values <- terra::values(out_raster)
+    imagen_ranked_values <- rank(imagen_values, na.last = 'keep', ties.method = 'average')
+    
+    # Safely set the new values using terra::setValues
+    # This prevents metadata corruption
+    out_raster <- terra::setValues(out_raster, imagen_ranked_values)
+    
+    return(out_raster)
+}
+
 
 calculate_quantity_pixel_for_category <- function(raster_image, numeric_category){
     use_freq = terra::freq(raster_image)
@@ -160,10 +175,34 @@ simulation_assessment <- function(num_pixels,model,mask){
 simulations_gains <- function(model,spatial_predict_variables,pixel_number, original_plantation_mask){
     prob <-  terra::predict(spatial_predict_variables, model, type = "response")
     m_prob <- prob * original_plantation_mask 
-    ranking_prob <- ranking_values_raster(m_prob)
-    gan_sim <-select_top_pixels(ranking_prob,pixel_number)
+    ranking_prob <- ranking_values_raster_review(m_prob)
+    gan_sim <-select_top_pixels_review(ranking_prob,pixel_number)
     return(gan_sim)
     
+}
+
+simulations_gains_review <- function(model, spatial_predict_variables, pixel_number, original_plantation_mask) {
+    
+    # Predict probabilities for each pixel
+    # This returns a valid SpatRaster
+    prob <- terra::predict(spatial_predict_variables, model, type = "response")
+    
+    # Mask the probabilities to the original plantation area.
+    # This uses terra's built-in masking, preserving SpatRaster properties.
+    m_prob <- prob * original_plantation_mask
+    
+    # Identify the top 'pixel_number' of pixels based on probability
+    # This is a more direct and efficient way to select top pixels
+    top_prob_threshold <- terra::quantile(m_prob, 1 - (pixel_number / ncell(m_prob)), na.rm = TRUE)
+    
+    # Create a new binary raster where top pixels are 1 and others are 0
+    # ifel is a robust terra function that always returns a valid SpatRaster
+    gan_sim <- terra::ifel(m_prob >= top_prob_threshold, 1, 0)
+    
+    # Re-apply the original mask to ensure NA values are correctly placed
+    gan_sim <- terra::mask(gan_sim, original_plantation_mask)
+    
+    return(gan_sim)
 }
 
 calculate_gains_area = function(raster_layer){
@@ -185,6 +224,41 @@ create_mask_from_raster_for_one_category <-function(raster_image,category,total_
     x <- c(category-1,category,1,0,category,0,category,total_number_categories,0)
     mclas = matrix(x, ncol = 3, byrow = TRUE)
     return (classify(raster_image,rcl = mclas,))
+}
+
+
+select_top_pixels_review <- function(raster, n_pixels) {
+    
+    # Ensure the input is a valid SpatRaster
+    if (!inherits(raster, "SpatRaster")) {
+        stop("Input must be a SpatRaster object.")
+    }
+    
+    # Extract values and handle NAs safely
+    vals <- values(raster, mat = FALSE)
+    na_mask <- is.na(vals)
+    vals[na_mask] <- -Inf # Temporarily replace NAs for sorting
+    
+    # Order indices by descending values
+    ord <- order(vals, decreasing = TRUE)
+    
+    # Select top N indices
+    top_idx <- ord[1:n_pixels]
+    
+    # Create a new vector for the output raster values, initialized to 0
+    out_vals <- rep(0, length(vals))
+    
+    # Set the values for the top pixels to 1
+    out_vals[top_idx] <- 1
+    
+    # Restore the NA values using the mask
+    out_vals[na_mask] <- NA
+    
+    # Create the output SpatRaster by setting values safely
+    # This is the key change to avoid corruption
+    out <- setValues(raster, out_vals)
+    
+    return(out)
 }
 
 
