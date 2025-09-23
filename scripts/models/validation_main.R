@@ -99,79 +99,6 @@ sim_plantation_2015 <- prepare_simulation_raster(
 )
 
 
-# Prepare the data we need sim_gain withou na inside
-# What does mask do
-
-plot(lingue_mask_positive)
-
-
-values(pred_plantation_gains_8715)[is.nan(values(pred_plantation_gains_8715))] <- NA
-values(sim_plantation_2015)[is.nan(values(sim_plantation_2015))] <- NA
-values(lingue_mask_positive)[is.nan(values(lingue_mask_positive))] <- NA
-
-NAflag(pred_plantation_gains_8715)
-NAflag(sim_plantation_2015)
-NAflag(lingue_mask_positive)
-
-
-template <- pred_plantation_gains_8715
-
-# Find the common set of non-NA cells across all rasters.
-# This ensures NA values are in the exact same locations.
-valid_cells <- !is.na(pred_plantation_gains_8715) & !is.na(sim_plantation_2015) & !is.na(lingue_mask_positive)
-na_mask <- is.na(pred_plantation_gains_8715) | is.na(sim_plantation_2015) | is.na(lingue_mask_positive)
-
-# Create a clean version of the first raster, where cells that are NA in ANY
-# of the rasters are set to NA.
-
-pred_clean1 <- pred_plantation_gains_8715
-pred_clean1[!valid_cells] <- NA
-
-sim_plantation_2015_clean <- sim_plantation_2015
-sim_plantation_2015_clean[!valid_cells] <- NA
-
-lingue_mask_positive_clean <- lingue_mask_positive
-lingue_mask_positive_clean[!valid_cells] <- NA
-
-
-TOC_values = TOC::TOC(pred_clean1,sim_plantation_2015_clean,mask= lingue_mask_positive_clean, nthres = 100)
-
-TOC_values
-
-plot(TOC_values, labelThres = TRUE, cex = 0.8, posL = 4)
-
-# Resample the other two rasters to match the template's extent, resolution, and CRS.
-# Use 'ngb' (nearest neighbor) for your mask, as it's likely categorical data.
-
-
-# Create a logical mask where TRUE indicates a valid pixel in all three rasters
-valid_cells <- !is.na(pred_plantation_gains_8715) & !is.na(sim_plantation_2015) & !is.na(lingue_mask_positive)
-
-# Use ifel() to create a new raster where pixels that are not valid
-# in all three rasters are set to NA.
-pred_clean <- terra::ifel(valid_cells, pred_plantation_gains_8715, NA)
-sim_clean <- terra::ifel(valid_cells, sim_plantation_2015, NA)
-lingue_clean <- terra::ifel(valid_cells, lingue_mask_positive, NA)
-
-
-
-sim_plantation_2015_resampled <- resample(sim_plantation_2015, template, method = 'near')
-lingue_mask_positive_resampled <- resample(lingue_mask_positive, template, method = 'near')
-
-
-datatype(pred_plantation_gains_8715, bylyr=TRUE)
-
-values_pred <- values(pred_plantation_gains_8715)
-
-class(values_pred)
-
-
-# https://www.youtube.com/watch?v=1JRwVOi0FSE
-
-
-#################
-
-
 validate_model <- function(i, glmulti_models, spatial_variables,
                            plantation_gain_pixel_8715,
                            plantation_1987_na_mask,
@@ -237,6 +164,13 @@ validate_model <- function(i, glmulti_models, spatial_variables,
     
     spatial_auc = compute_spatial_auc_from_raster_images(real_plantation_gains_8715,pred_plantation_gains_8715)
     
+    # Calculate TOC
+    standarize_image <- image_standarization_function(pred_plantation_gains_8715,sim_plantation_2015,lingue_mask_positive)
+    TOC_VALUE <- TOC::TOC(standarize_image[["pred_plantation_gains"]],standarize_image[["sim_plantation_2015"]],mask= standarize_image[["lingue_mask_positive"]], nthres = 100)
+    TOC_AUC = TOC_VALUE@AUC
+    
+    
+    
     # Return as data.frame with list-column
     tibble::tibble(
         model_id = i,
@@ -251,8 +185,8 @@ validate_model <- function(i, glmulti_models, spatial_variables,
         MCFaddenPseudoR2 = pseudoR2,
         spatial_auc = as.numeric(spatial_auc),
         training_auc = as.numeric(train_auc),
-        test_auc = as.numeric(test_auc)
-        #TODO: ADD TOC HOW TO CALCULATE TOC
+        test_auc = as.numeric(test_auc),
+        toc_auc = TOC_AUC
     )
     
 }
@@ -270,4 +204,6 @@ results_tibble <- purrr::map_dfr(1:10, ~ validate_model(
     training_data,
     test_data
 ))
+
+View(results_tibble)
 

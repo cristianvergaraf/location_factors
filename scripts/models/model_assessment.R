@@ -136,6 +136,8 @@ prepare_simulation_raster <- function(sim_img, lingue_mask_positive, plantation_
     # Add initial plantation to get total simulated plantation
     sim_plantation_2015 <- sim_gain_mask + plantation_1987
     
+    values(sim_plantation_2015)[is.nan(values(sim_plantation_2015))] <- NA
+    
     return (sim_plantation_2015)
     
 }
@@ -338,6 +340,35 @@ compute_spatial_auc_from_raster_images <- function(real_gain,pred_gain){
     return(spatial_auc)
     
 }
+
+image_standarization_function <- function(pred_plantation_gains_8715,sim_plantation_2015,lingue_mask_positive){
+    
+    # Convert NAN to NA
+    values(pred_plantation_gains_8715)[is.nan(values(pred_plantation_gains_8715))] <- NA
+    values(sim_plantation_2015)[is.nan(values(sim_plantation_2015))] <- NA
+    values(lingue_mask_positive)[is.nan(values(lingue_mask_positive))] <- NA
+    
+    # Creates a common mask of na for each raster
+    valid_cells <- !is.na(pred_plantation_gains_8715) & !is.na(sim_plantation_2015) & !is.na(lingue_mask_positive)
+    
+    # Applies the mask to each raster
+    pred_clean <- pred_plantation_gains_8715
+    pred_clean[!valid_cells] <- NA
+    
+    sim_plantation_2015_clean <- sim_plantation_2015
+    sim_plantation_2015_clean[!valid_cells] <- NA
+    
+    lingue_mask_positive_clean <- lingue_mask_positive
+    lingue_mask_positive_clean[!valid_cells] <- NA
+    
+    # Create a stack conserving the image names
+    images_stack <- c(pred_clean,sim_plantation_2015_clean,lingue_mask_positive_clean)
+    names(images_stack) <- c("pred_plantation_gains", "sim_plantation_2015","lingue_mask_positive")
+    
+    return(images_stack)
+    
+}
+
 
 
 
