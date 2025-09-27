@@ -49,27 +49,14 @@ spatial_variables <- terra::rast(variables)
 
 # Load models
 
-glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model_20250815_094328.rds")
+glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model_all_20250926_192822.rds")
 
 
 # Iterative process to compute and save spatial and non spatial metrics for each model
 
-datatype(spatial_variables[[14]])
+datatype(spatial_variables[[12]])
 ### Function to calculate spatial ROC from real expansion and simulated expansion
 
-spatial_variables
-
-pred_plantation_gains_8715 <- terra::predict(spatial_variables, glmulti_models@objects[[1]], type = "response")
-
-plot(pred_plantation_gains_8715)
-
-values(pred_plantation_gains_8715)
-
-datatype(pred_plantation_gains_8715)
-
-terra::datatype(pred_plantation_gains_8715)
-
-#### We are going to compute training and testing AUC 
 
 source("config/paths.R")
 
@@ -78,26 +65,8 @@ source("config/paths.R")
 training_data <- read.csv(training_data_file)
 test_data <- read.csv(test_data_file)
 
-test_data
 
-# Run simulation for this model
-sim_gain <- simulations_gains(
-    glmulti_models@objects[[1]],
-    spatial_variables,
-    plantation_gain_pixel_8715,
-    original_plantation_mask = plantation_1987_na_mask
-)
-
-datatype(sim_gain)
-
-# Build plantation total for 2015
-
-sim_plantation_2015 <- prepare_simulation_raster(
-    sim_img = sim_gain,
-    lingue_mask_positive = lingue_mask_positive,
-    plantation_1987 = plantation_1987
-)
-
+## Defined function to process data and calculate all necesary metrics
 
 validate_model <- function(i, glmulti_models, spatial_variables,
                            plantation_gain_pixel_8715,
@@ -191,7 +160,7 @@ validate_model <- function(i, glmulti_models, spatial_variables,
     
 }
 
-results_tibble <- purrr::map_dfr(1:10, ~ validate_model(
+results_tibble <- purrr::map_dfr(1:1024, ~ validate_model(
     .x,
     glmulti_models,
     spatial_variables,
@@ -205,5 +174,24 @@ results_tibble <- purrr::map_dfr(1:10, ~ validate_model(
     test_data
 ))
 
-View(results_tibble)
+saveRDS(results_tibble, file = "results/results_tibble.rds")
 
+library(tidyr)
+
+results_flat <- results_tibble %>%
+    unnest(cols = c(variables))   # replace `variables` with the list-column name(s)
+
+
+results_export <- results_tibble %>%
+    mutate(across(where(is.list), ~ sapply(., paste, collapse = ",")))
+
+write.csv(results_export, "results/results_all_models.csv", row.names = FALSE)
+
+
+
+
+write.csv(results_flat, "results/results_all_models.csv", row.names = FALSE)
+
+
+results <- as.data.frame(results_tibble)
+write.csv(results, file = "results/results_all_models.csv", row.names = FALSE)

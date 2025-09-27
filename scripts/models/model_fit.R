@@ -42,15 +42,10 @@ glmulti_model <- glmulti(
     report = glmulti_args$report
 )
 
-# TODO: VALIDACION TENGO HACER LA VALIDACIÓN APARTE: ROC, AUC, OTRAS MÉTRICAS.
-# TODO: SOLUCIONAR VALIDACION
-
-# Ahora del modelo necesito Validar cada uno de los modelos usando el ROC,
-# El akeike del modelo,
 
 ## Export model  
 
-name = model_name(glmulti_model, prefix = "glmulti_model")
+name = model_name(glmulti_model, prefix = "glmulti_model_all")
 
 file_name = paste0(name,".rds")
 
