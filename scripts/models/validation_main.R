@@ -17,10 +17,15 @@ source("scripts/models/model_assessment.R")
 # Real gain of forest plantation 
 
 real_plantation_gains_8715 <- rast(gan_patches_8715_file)
+
 datatype(real_plantation_gains_8715)
+
 plantation_1987 <- rast("data/processed/raster/validation_required_images/plantation_1987_mask_final.tif")
+
 datatype(plantation_1987)
+
 real_plantation_2015 <- rast("data/processed/raster/validation_required_images/real_plantation_2015.tif")
+
 datatype(real_plantation_2015)
 
 # We calculate the gain in pixels for forest plantation from 1987-2015
@@ -51,6 +56,8 @@ spatial_variables <- terra::rast(variables)
 
 glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model_all_20250926_192822.rds")
 
+aic_null <- AIC(glmulti_models@objects[[1]]) #null model
+glmulti_models@objects[[1021]]
 
 # Iterative process to compute and save spatial and non spatial metrics for each model
 
@@ -89,7 +96,7 @@ validate_model <- function(i, glmulti_models, spatial_variables,
     
     # Extract AIC for this model and null model
     aic <- AIC(model_i)
-    aic_null <- AIC(glmulti_models@objects[[1]]) #null model
+    aic_null <- AIC(glmulti_models@objects[[1021]]) #null model
     delta_aic <- aic_null - aic
     
     # Deviances

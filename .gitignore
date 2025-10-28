@@ -13,4 +13,13 @@ rds/
 renv/
 models/preprocessing/
 QGIS_VIZ.qgz
+.Rprofile
+__pycache__/outliers.cpython-39.pyc
+data.rar
+# Ignorar archivos grandes y temporales
+*.RDataTmp*
+*.rar
+*.zip
+*.RData
+
 

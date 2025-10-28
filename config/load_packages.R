@@ -23,4 +23,6 @@ library(raster)
 library(purrr)
 library(PresenceAbsence)
 library(TOC)
+library(tidyr)
+library(patchwork)
 

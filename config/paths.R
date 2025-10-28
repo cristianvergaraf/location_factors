@@ -10,6 +10,7 @@ patches_data_dir <- file.path(root_dir, "data/processed/raster/patches")
 model_data_dir    <- file.path(root_dir, "data/processed/csv")
 scripts_dir <- file.path(root_dir, "scripts")
 models_dir <- file.path(root_dir, "scripts/models")
+result_dir <- file.path(root_dir, "results")
 
 # Archivos clave
 
@@ -20,3 +21,6 @@ extract_data_from_raster_file <- file.path(model_data_dir, "extract_data_from_ra
 gan_patches_8715_file <- file.path(patches_data_dir, "ras_gan_patches_8715_exp87.tif")
 training_data_file <- file.path(model_data_dir, "extract_data_from_raster.csv")
 test_data_file <- file.path(model_data_dir, "test_data_pl8715.csv")
+
+# models results
+model_results_all <- file.path(result_dir, "results_all_models.csv")
