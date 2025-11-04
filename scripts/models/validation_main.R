@@ -73,6 +73,10 @@ training_data <- read.csv(training_data_file)
 test_data <- read.csv(test_data_file)
 
 
+### Generar mapas 
+
+
+
 ## Defined function to process data and calculate all necesary metrics
 
 validate_model <- function(i, glmulti_models, spatial_variables,

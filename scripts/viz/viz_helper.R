@@ -71,11 +71,49 @@ generate_auc_facet_plot <- function(df_long) {
         geom_point(alpha = 0.6, color = "gray50") +
         geom_smooth(method = "lm", se = FALSE, color = "#2ca02c", linetype = "dashed") + # Green linear trend
         # Use ncol=2 to arrange the 4 plots in a 2x2 grid
-        facet_wrap(~ Metric, scales = "free_y", ncol = 2) +
+        facet_wrap(~ Metric, scales = "free_y", ncol = 3) +
         labs(
-            title = "B. AUC Metrics vs. AIC (Faceted View)",
+            title = "B. AUC vs AIC",
             x = "AIC (Akaike Information Criterion)",
             y = "AUC Value"
+        ) +
+        # ✅ Add custom axis breaks
+        scale_x_continuous(
+            breaks = scales::pretty_breaks(n = 10) # show ~5 evenly spaced ticks
+        ) +
+        scale_y_continuous(
+            breaks = scales::pretty_breaks(n = 5)
+        ) +
+        theme_minimal(base_size = 14) +
+        theme(
+            plot.title = element_text(face = "bold", hjust = 0.5),
+            strip.background = element_rect(fill = "gray95", color = NA) # Style facet labels
+        )
+    
+    return(p_auc)
+}
+
+
+#' @title Generates the Faceted Scatterplots for AUC Metrics vs. AIC
+#'
+#' @description
+#' Creates the bottom panel, displaying four separate scatterplots comparing
+#' different AUC metrics against AIC.
+#'
+#' @param df_long The long-format data frame from 'prepare_df_wide_long'.
+#'
+#' @return A ggplot object (p_auc).
+generate_auc_facet_plot_general <- function(df_long, x, y,title,x_axis,y_axis) {
+    # NOTE: Corrected 'AIC' to 'aic' to match the dataframe column case
+    p_auc <- ggplot(df_long, aes(x = x, y = y)) +
+        geom_point(alpha = 0.6, color = "gray50") +
+        geom_smooth(method = "lm", se = FALSE, color = "#2ca02c", linetype = "dashed") + # Green linear trend
+        # Use ncol=2 to arrange the 4 plots in a 2x2 grid
+        facet_wrap(~ Metric, scales = "free_y", ncol = 2) +
+        labs(
+            title = title,
+            x = x_axis,
+            y = y_axis
         ) +
         theme_minimal(base_size = 14) +
         theme(

@@ -63,6 +63,77 @@ calculate_figure_of_merits_image_2 <- function(imagen_1, imagen_2) {
                                         terra::ifel(imagen_1 == 0 & imagen_2 == 0, 0, NA))))
 }
 
+
+calculate_figure_of_merits_image_labeled <- function(observed_r, simulated_r, mask_r = NULL) {
+    # --------------------------------------------------------------------
+    # Create a Figure of Merit (FoM) classification raster.
+    # Each pixel will be assigned a code:
+    #   1 = Hit (True Positive)
+    #   2 = Commission Error (False Positive)
+    #   3 = Omission Error (False Negative)
+    #   0 = Correct Rejection (True Negative)
+    # Missing / invalid pixels -> NA
+    #
+    # Args:
+    #   observed_r: terra::SpatRaster, observed (reference) change map
+    #   simulated_r: terra::SpatRaster, simulated change map
+    #   mask_r: (optional) terra::SpatRaster mask (1 = valid, 0/NA = ignore)
+    #
+    # Returns:
+    #   A SpatRaster with categorical FoM classes and a legend table
+    # --------------------------------------------------------------------
+    
+    # --- Check geometry consistency ---
+    if (!terra::compareGeom(observed_r, simulated_r, stopOnError = FALSE)) {
+        stop("Observed and simulated rasters do not share the same extent/resolution.")
+    }
+    
+    # --- Compute FoM classes ---
+    fom_r <- terra::ifel(
+        observed_r == 1 & simulated_r == 1, 1,  # Hit / True Positive
+        terra::ifel(
+            observed_r == 0 & simulated_r == 1, 2,  # Commission Error / False Positive
+            terra::ifel(
+                observed_r == 1 & simulated_r == 0, 3,  # Omission Error / False Negative
+                0  # Correct Rejection / True Negative
+            )
+        )
+    )
+    
+    # --- Apply mask if provided ---
+    if (!is.null(mask_r)) {
+        fom_r <- terra::mask(fom_r, mask_r)
+    }
+    
+    # --- Assign names and categories ---
+    names(fom_r) <- "FoM_class"
+    
+    # Create a data frame for legend (useful for plotting or exporting)
+    fom_legend <- data.frame(
+        class_code = c(0, 1, 2, 3),
+        meaning = c(
+            "True Negative (Correct Rejection)",
+            "True Positive (Hit)",
+            "False Positive (Commission Error)",
+            "False Negative (Omission Error)"
+        ),
+        color = c("#e0e0e0", "#1b9e77", "#d95f02", "#7570b3") # optional colors
+    )
+    
+    # Attach legend as an attribute (for easy access)
+    attr(fom_r, "legend_table") <- fom_legend
+    
+    message("FoM raster created with legend table (see attr(x, 'legend_table')).")
+    return(fom_r)
+}
+
+
+
+
+
+
+
+
 calculate_fom <- function(ref_img, sim_img){
   
   # stack images in a vector    
@@ -368,6 +439,7 @@ image_standarization_function <- function(pred_plantation_gains_8715,sim_plantat
     return(images_stack)
     
 }
+
 
 
 
