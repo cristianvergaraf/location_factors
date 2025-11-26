@@ -176,6 +176,22 @@ create_model_performance_plots <- function(df) {
     return(combined_plot)
 }
 
+relative_importance_plot <- function(df){
+    return(ggplot(df_imp, aes(x = Variable, y = Importance)) +
+               geom_col(fill = "#2c7fb8") +
+               coord_flip() +
+               labs(
+                   y = "Importancia"
+               ) +
+               theme_minimal(base_size = 14) +
+               theme(
+                   plot.title = element_text(face = "bold", hjust = 0.5),
+                   axis.text.y = element_text(size = 12),
+                   axis.text.x = element_text(size = 12)
+               ))
+
+}
+
 
 
 
