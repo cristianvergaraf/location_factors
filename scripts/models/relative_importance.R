@@ -16,7 +16,8 @@ source("scripts/models/model_assessment.R")
 
 # Load models
 
-glmulti_models <- readRDS("~/github/location_factors/model_outputs/glmulti_model_all_20250926_192822.rds")
+glmulti_models <- readRDS("model_outputs/glmulti_model_all_20250926_192822.rds")
+
 
 glmulti_models
 
@@ -42,8 +43,6 @@ relative_importance_plot(df_avg_lingue8715[1:10,])
 
 glmulti_models@objects[c(1,4,5)]
 
-relative_importance_plot(df_300)
-
 # Ahora debemos replicar el cálculo de la importancia relativa a las otras métricas, 
 # a lo menos el FOM, y AUC spatial, quizás al TOC.
 
@@ -63,10 +62,7 @@ View(results_models)
 
 ###################################
 
-
-
 weights_fom <- compute_weights(results_models$fom, maximize = TRUE)
-
 
 results_models$weight_fom <- weights_fom
 
@@ -83,6 +79,8 @@ importance_fom
 
 
 results$weight_fom <- compute_weights(results$fom, maximize = TRUE)
+results$weight_auc <- compute_weights(results$spatial_auc, maximize = TRUE)
+results$weight_aic <- compute_weights(results$aic, maximize = FALSE)
 
 results$variables
 
