@@ -45,7 +45,7 @@ datatype(lingue_mask_positive)
 ## load spatial data
 
 variables <- list.files(
-    "~/github/location_factors/data/raw/raster/factores_localizacion", 
+    "data/raw/raster/factores_localizacion", 
     pattern = ".tif$", full.names = TRUE
 )
 
@@ -66,6 +66,12 @@ datatype(spatial_variables[[12]])
 
 
 source("config/paths.R")
+
+
+
+
+
+
 
 #### Load Data Training Data
 

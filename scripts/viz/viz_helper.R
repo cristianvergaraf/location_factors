@@ -65,9 +65,9 @@ generate_fom_plot <- function(df) {
 #' @param df_long The long-format data frame from 'prepare_df_wide_long'.
 #'
 #' @return A ggplot object (p_auc).
-generate_auc_facet_plot <- function(df_long) {
+generate_auc_facet_plot <- function(df) {
     # NOTE: Corrected 'AIC' to 'aic' to match the dataframe column case
-    p_auc <- ggplot(df_long, aes(x = aic, y = Metric_value)) +
+    p_auc <- ggplot(df, aes(x = aic, y = Metric_value)) +
         geom_point(alpha = 0.6, color = "gray50") +
         geom_smooth(method = "lm", se = FALSE, color = "#2ca02c", linetype = "dashed") + # Green linear trend
         # Use ncol=2 to arrange the 4 plots in a 2x2 grid
@@ -142,6 +142,37 @@ combine_model_plots <- function(p_fom, p_auc) {
     
     return(combined_plot)
 }
+
+
+generate_fom_plot_r2 <- function(df) {
+    
+    # Fit linear model to compute R²
+    lm_model <- lm(aic ~ fom, data = df)
+    r2_value <- summary(lm_model)$r.squared
+    
+    # Plot
+    p_fom <- ggplot(df, aes(x = fom, y = aic)) +
+        geom_point(alpha = 0.7, color = "#1f77b4") +  # Blue points
+        geom_smooth(method = "loess", se = TRUE, color = "#ff7f0e") +  # Orange LOESS
+        labs(
+            title = "A. Figure of Merit (FOM) vs. AIC",
+            x = "FOM Value",
+            y = "AIC (Akaike Information Criterion)"
+        ) +
+        # Add R² label
+        annotate(
+            "text",
+            x = Inf, y = Inf,              # place in top-right
+            hjust = 1.2, vjust = 1.5,
+            label = paste0("R² = ", round(r2_value, 3)),
+            size = 5
+        ) +
+        theme_minimal(base_size = 14) +
+        theme(plot.title = element_text(face = "bold", hjust = 0.5))
+    
+    return(p_fom)
+}
+
 
 # ====================================================================
 # MAIN FUNCTION (Orchestrator)
